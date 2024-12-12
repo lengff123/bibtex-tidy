@@ -1,0 +1,7 @@
+flask
+flask-cors
+bibtexparser
+pybtex
+setuptools
+flask>=2.0.0
+bibtexparser>=1.4.0

@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>BibTeX Processor</title>
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+    <script type="module">
+        import i18n, { detectLanguage } from './static/js/i18n.js';
+        window.i18n = i18n;
+        
+        // 页面加载时自动设置语言
+        document.addEventListener('DOMContentLoaded', () => {
+            const detectedLang = detectLanguage();
+            document.querySelector('.language-selector').value = detectedLang;
+            changeLanguage(detectedLang);
+        });
+    </script>
+    <style>
+        :root {
+            --vscode-bg: #1e1e1e;
+            --vscode-sidebar-bg: #252526;
+            --vscode-text: #cccccc;
+            --vscode-input-bg: #3c3c3c;
+            --vscode-border: #454545;
+            --vscode-highlight: #04395e;
+            --vscode-button: #0e639c;
+            --vscode-button-hover: #1177bb;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--vscode-text);
+            background: var(--vscode-bg);
+            margin: 0;
+        }
+        
+        .header {
+            background: var(--vscode-sidebar-bg);
+            color: var(--vscode-text);
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid var(--vscode-border);
+        }
+        
+        .header h1 {
+            font-size: 1.2rem;
+            margin: 0;
+        }
+        
+        .editor-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .options-panel {
+            flex: 0 0 300px;
+            background: var(--vscode-sidebar-bg);
+            padding: 1rem;
+            overflow-y: auto;
+            border-right: 1px solid var(--vscode-border);
+        }
+        
+        .editor-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--vscode-bg);
+        }
+        
+        .editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background: var(--vscode-sidebar-bg);
+            border-bottom: 1px solid var(--vscode-border);
+        }
+        
+        .editor-header span {
+            color: var(--vscode-text);
+            font-size: 0.9rem;
+        }
+        
+        #editor-container {
+            flex: 1;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .option-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .option-title {
+            font-weight: 600;
+            color: var(--vscode-text);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.8rem;
+        }
+        
+        .form-control, .form-select {
+            background: var(--vscode-input-bg);
+            border: 1px solid var(--vscode-border);
+            color: var(--vscode-text);
+            border-radius: 2px;
+            padding: 4px 8px;
+            font-size: 0.9rem;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            outline: 1px solid var(--vscode-highlight);
+            border-color: var(--vscode-highlight);
+            background: var(--vscode-input-bg);
+            color: var(--vscode-text);
+            box-shadow: none;
+        }
+        
+        .form-check-input {
+            background-color: var(--vscode-input-bg);
+            border-color: var(--vscode-border);
+        }
+        
+        .form-check-input:checked {
+            background-color: var(--vscode-button);
+            border-color: var(--vscode-button);
+        }
+        
+        .form-check-label {
+            font-size: 0.9rem;
+        }
+        
+        .form-text {
+            color: #888;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+        }
+        
+        .btn-process {
+            background: var(--vscode-button);
+            color: white;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 2px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .btn-process:hover {
+            background: var(--vscode-button-hover);
+            color: white;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--vscode-bg);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 5px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4f4f4f;
+        }
+        
+        /* 分组之间的分隔 */
+        .option-group {
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--vscode-border);
+        }
+        
+        .option-group:last-child {
+            border-bottom: none;
+        }
+        
+        /* 输入框占位符颜色 */
+        ::placeholder {
+            color: #666;
+            opacity: 1;
+        }
+        
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .support-btn {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(45deg, #FF813F, #FF9D6C);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(255, 129, 63, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .support-btn:hover {
+            background: linear-gradient(45deg, #FF9D6C, #FFB59A);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(255, 129, 63, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--vscode-text);
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .github-link:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: var(--vscode-text);
+            text-decoration: none;
+        }
+        
+        .github-link svg {
+            fill: currentColor;
+        }
+
+        .language-selector {
+            background: var(--vscode-input-bg);
+            color: var(--vscode-text);
+            border: 1px solid var(--vscode-border);
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.9rem;
+            margin-right: 1rem;
+        }
+
+        .language-selector:focus {
+            outline: 1px solid var(--vscode-highlight);
+            border-color: var(--vscode-highlight);
+        }
+
+        .language-selector option {
+            background: var(--vscode-input-bg);
+            color: var(--vscode-text);
+        }
+
+        /* 语言切换开关样式 */
+        .language-toggle {
+            position: relative;
+            display: inline-block;
+            margin-right: 1rem;
+        }
+
+        .language-checkbox {
+            display: none;
+        }
+
+        .language-slider {
+            position: relative;
+            display: inline-block;
+            width: 64px;
+            height: 28px;
+            background: var(--vscode-input-bg);
+            border-radius: 14px;
+            cursor: pointer;
+            overflow: hidden;
+            border: 1px solid var(--vscode-border);
+        }
+
+        .language-option {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--vscode-text);
+            transition: color 0.3s ease;
+            z-index: 1;
+        }
+
+        .language-option.en {
+            left: 10px;
+        }
+
+        .language-option.zh {
+            right: 10px;
+        }
+
+        .slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 30px;
+            height: 22px;
+            background: var(--vscode-button);
+            border-radius: 11px;
+            transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        /* 选中状态 */
+        .language-checkbox:checked + .language-slider .slider {
+            transform: translateX(34px);
+        }
+
+        .language-checkbox:checked + .language-slider .language-option.en {
+            color: var(--vscode-text-muted);
+        }
+
+        .language-checkbox:checked + .language-slider .language-option.zh {
+            color: white;
+        }
+
+        .language-checkbox:not(:checked) + .language-slider .language-option.en {
+            color: white;
+        }
+
+        .language-checkbox:not(:checked) + .language-slider .language-option.zh {
+            color: var(--vscode-text-muted);
+        }
+
+        /* 悬停效果 */
+        .language-slider:hover {
+            background: var(--vscode-input-bg);
+            border-color: var(--vscode-highlight);
+        }
+
+        .language-slider:hover .slider {
+            background: var(--vscode-button-hover);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid p-0">
+        <div class="editor-container">
+            <!-- 左侧选项面板 -->
+            <div class="options-panel">
+                <form id="options-form">
+                    <!-- 其他选项 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="options">Options</div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="header" id="header">
+                            <label class="form-check-label" for="header" data-i18n="header">
+                                Enable header comments with processing information
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 格式化选项 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="formatting">Formatting</div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="alignment">Alignment</label>
+                            <input type="number" class="form-control" name="align" 
+                                   placeholder="20">
+                            <small class="form-text text-muted" data-i18n-hint="alignmentHint">Alignment value for field values</small>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="double_braces" id="double_braces">
+                            <label class="form-check-label" for="double_braces" data-i18n="doubleBraces">
+                                Use double braces for values
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="use_spaces" id="use_spaces">
+                            <label class="form-check-label" for="use_spaces" data-i18n="useSpaces">
+                                Use spaces instead of tabs for indentation
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 排序和重复项处理 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="sortingDuplicates">Sorting & Duplicates</div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="sortEntries">Sort Entries</label>
+                            <select class="form-select" name="sort_entries">
+                                <option value="none" data-i18n="sortNone">None (preserve order)</option>
+                                <option value="key" data-i18n="sortKey">By citation key</option>
+                                <option value="year" data-i18n="sortYear">By year</option>
+                                <option value="author" data-i18n="sortAuthor">By author</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="duplicateCheck">Duplicate Check</label>
+                            <select class="form-select" name="duplicate_check">
+                                <option value="" data-i18n="duplicateNone">None</option>
+                                <option value="key" data-i18n="duplicateKey">By key</option>
+                                <option value="doi" data-i18n="duplicateDoi">By DOI</option>
+                                <option value="title" data-i18n="duplicateTitle">By title</option>
+                                <option value="all" data-i18n="duplicateAll">All methods</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="mergeStrategy">Merge Strategy</label>
+                            <select class="form-select" name="merge_strategy">
+                                <option value="combine" data-i18n="mergeCombine">Combine</option>
+                                <option value="overwrite" data-i18n="mergeOverwrite">Overwrite</option>
+                                <option value="first" data-i18n="mergeFirst">Keep first</option>
+                                <option value="last" data-i18n="mergeLast">Keep last</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 字段处理选项 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="fieldProcessing">Field Processing</div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="fieldOrder">Field Order</label>
+                            <input type="text" class="form-control" name="field_order" 
+                                   placeholder="author,title,year">
+                            <small class="form-text text-muted" data-i18n-hint="fieldOrderHint">Comma-separated list of fields in desired order</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="omitFields">Omit Fields</label>
+                            <input type="text" class="form-control" name="omit" 
+                                   placeholder="abstract,note">
+                            <small class="form-text text-muted" data-i18n-hint="omitFieldsHint">Fields to omit (comma-separated)</small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="replaceFields">Replace Fields</label>
+                            <input type="text" class="form-control" name="replace_fields" 
+                                   placeholder="old1:new1,old2:new2">
+                            <small class="form-text text-muted" data-i18n-hint="replaceFieldsHint">Format: old1:new1,old2:new2</small>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="sort_fields" id="sort_fields">
+                            <label class="form-check-label" for="sort_fields" data-i18n="sortFields">
+                                Enable field sorting
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 作者处理选项 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="authorProcessing">Author Processing</div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="maxAuthors">Max Authors</label>
+                            <input type="number" class="form-control" name="max_authors" 
+                                   placeholder="3">
+                            <small class="form-text text-muted" data-i18n-hint="maxAuthorsHint">Maximum number of authors before truncating</small>
+                        </div>
+                    </div>
+
+                    <!-- URL处理选项 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="urlProcessing">URL Processing</div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="encode_urls" id="encode_urls">
+                            <label class="form-check-label" for="encode_urls" data-i18n="encodeUrls">
+                                Enable URL encoding
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="validate_urls" id="validate_urls">
+                            <label class="form-check-label" for="validate_urls" data-i18n="validateUrls">
+                                Check if URLs are accessible
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 引用键选项 -->
+                    <div class="option-group">
+                        <div class="option-title" data-i18n="citationKeys">Citation Keys</div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="auto_keys" id="auto_keys">
+                            <label class="form-check-label" for="auto_keys" data-i18n="autoKeys">
+                                Automatically generate citation keys
+                            </label>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" data-i18n="keyFormat">Key Format</label>
+                            <input type="text" class="form-control" name="key_format" 
+                                   placeholder="[auth][year][title:3]">
+                            <small class="form-text text-muted" data-i18n-hint="keyFormatHint">Format for citation keys (e.g., "[auth][year][title:3]")</small>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-process w-100 mt-3" onclick="processBibTeX()" data-i18n="process">
+                        Process BibTeX
+                    </button>
+                </form>
+            </div>
+            
+            <!-- 右侧编辑器 -->
+            <div class="editor-main">
+                <div class="editor-header">
+                    <span data-i18n="editor">BibTeX Editor</span>
+                    <div class="header-actions">
+         
+                        <a href="https://www.buymeacoffee.com/YOUR_USERNAME" target="_blank" class="support-btn">
+                            <span data-i18n="donate">Donate to Support BibTeX Tidy ☕</span>
+                        </a>
+                        <div class="language-toggle">
+                            <input type="checkbox" id="language-switch" class="language-checkbox" onchange="changeLanguage(this.checked ? 'zh' : 'en')">
+                            <label for="language-switch" class="language-slider">
+                                <span class="language-option en">EN</span>
+                                <span class="language-option zh">中</span>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <a href="https://github.com/lengff123/bibtex-tidy" target="_blank" class="github-link">
+                            <svg height="24" width="24" viewBox="0 0 16 16" version="1.1">
+                                <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                            </svg>
+                            <span data-i18n="editor">GitHub</span>
+                        </a>
+                        
+                        <button class="btn btn-process" onclick="processBibTeX()">
+                            <span data-i18n="process">Process</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="editor-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+        // 配置后端 API 地址
+        const API_BASE_URL = ''//'http://10.134.86.96:5000';  // 使用 HTTP
+            // 示例 BibTeX 条目
+        const exampleBibTeX = `
+% Bibliography File
+% Processed by BibTidy on 2024-12-06 21:59:33
+% Total entries: 3
+% Options used:
+%   - header: True
+%   - sort_entries: none
+%   - merge_strategy: combine
+% ============================================================================
+
+@article{vaswani2017attention,
+  title={Attention is all you need},
+  author={Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N and Kaiser, Lukasz and Polosukhin, Illia},
+  journal={Advances in neural information processing systems},
+  volume={30},
+  year={2017}
+}
+
+@article{brown2020language,
+  title={Language models are few-shot learners},
+  author={Brown, Tom B and Mann, Benjamin and Ryder, Nick and Subbiah, Amanda and others},
+  journal={Advances in neural information processing systems},
+  volume={33},
+  pages={1877--1901},
+  year={2020}
+}
+
+@article{devlin2018bert,
+  title={BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding},
+  author={Devlin, Jacob and Chang, Ming-Wei and Lee, Kenton and Toutanova, Kristina},
+  journal={arXiv preprint arXiv:1810.04805},
+  year={2018}
+}
+    `   ;
+        // 初始化 Monaco Editor
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            // 注册 BibTeX 语言
+            monaco.languages.register({ id: 'bibtex' });
+            
+            // 定义 BibTeX 语言的语法高亮规则
+            monaco.languages.setMonarchTokensProvider('bibtex', {
+                defaultToken: '',
+                tokenizer: {
+                    root: [
+                        // 注释
+                        [/%.*$/, 'comment'],
+                        
+                        // 条目类型
+                        [/@\w+/, 'keyword'],
+                        
+                        // 大括号
+                        [/{/, 'delimiter.curly'],
+                        [/}/, 'delimiter.curly'],
+                        
+                        // 字段名
+                        [/[a-zA-Z_]\w*(?=\s*=)/, 'variable'],
+                        
+                        // 号
+                        [/=/, 'operator'],
+                        
+                        // 字符串值
+                        [/{[^}]*}/, 'string'],
+                        
+                        // 数字
+                        [/\d+/, 'number'],
+                        
+                        // 分隔符
+                        [/[,]/, 'delimiter'],
+                    ]
+                }
+            });
+            // 自定义主题颜色 - 放在创建编辑器之前
+            monaco.editor.defineTheme('bibtex-dark', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'comment', foreground: '6A9955' }, // 绿色
+                    { token: 'keyword', foreground: 'FF69B4' }, // 紫色
+                    { token: 'variable', foreground: '9CDCFE' }, // 浅蓝色
+                    { token: 'string', foreground: 'CE9178' }, // 橙色
+                    { token: 'number', foreground: 'B5CEA8' }, // 浅绿色
+                    { token: 'delimiter', foreground: 'D4D4D4' }, // 灰色
+                    { token: 'operator', foreground: 'D4D4D4' } // 灰色
+                ],
+                colors: {
+                    'editor.background': '#1E1E1E'
+                }
+            });
+            // 创建编辑器
+            editor = monaco.editor.create(document.getElementById('editor-container'), {
+                value: exampleBibTeX,
+                language: 'bibtex',
+                theme: 'vs-dark',
+                automaticLayout: true,
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineHeight: 21,
+                padding: { top: 10, bottom: 10 },
+                scrollBeyondLastLine: false,
+            });
+            
+            // 设置编辑器的初始大小
+            window.addEventListener('resize', function() {
+                editor.layout();
+            });
+        });
+        
+        // 处理 BibTeX
+        async function processBibTeX() {
+            const content = editor.getValue();
+            const formData = new FormData(document.getElementById('options-form'));
+            const options = Object.fromEntries(formData.entries());
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/process`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: content,
+                        options: options
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    editor.setValue(data.content);
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error);
+            }
+        }
+
+        function changeLanguage(lang) {
+            const elements = document.querySelectorAll('[data-i18n]');
+            elements.forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (i18n[lang][key]) {
+                    if (element.tagName === 'INPUT' && element.type === 'placeholder') {
+                        element.placeholder = i18n[lang][key];
+                    } else {
+                        element.textContent = i18n[lang][key];
+                    }
+                }
+            });
+
+            // 更新所有提示文本
+            document.querySelectorAll('.form-text').forEach(element => {
+                const key = element.getAttribute('data-i18n-hint');
+                if (key && i18n[lang][key]) {
+                    element.textContent = i18n[lang][key];
+                }
+            });
+
+            // 更新所有选项值
+            document.querySelectorAll('select option').forEach(option => {
+                const key = option.getAttribute('data-i18n');
+                if (key && i18n[lang][key]) {
+                    option.textContent = i18n[lang][key];
+                }
+            });
+
+            localStorage.setItem('preferred-language', lang);
+        }
+
+        // 页面加载时设置初始状态
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedLang = localStorage.getItem('preferred-language') || 
+                             (navigator.language.startsWith('zh') ? 'zh' : 'en');
+            const checkbox = document.getElementById('language-switch');
+            checkbox.checked = savedLang === 'zh';
+            changeLanguage(savedLang);
+        });
+    </script>
+</body>
+</html>

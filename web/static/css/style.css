@@ -1,0 +1,44 @@
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    display: flex;
+    height: 100vh;
+}
+
+#app {
+    display: flex;
+    width: 100%;
+}
+
+#sidebar {
+    width: 20%;
+    background-color: #f4f4f4;
+    padding: 10px;
+}
+
+#sidebar ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+#sidebar li {
+    margin: 10px 0;
+}
+
+#sidebar a {
+    text-decoration: none;
+    color: #333;
+    display: block;
+    padding: 8px;
+    background-color: #e0e0e0;
+    border-radius: 4px;
+}
+
+#sidebar a:hover {
+    background-color: #d0d0d0;
+}
+
+#editor {
+    width: 80%;
+    padding: 10px;
+}
