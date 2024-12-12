@@ -24,7 +24,8 @@ wheels/
 venv/
 env/
 ENV/
-bib_tify/
+bib_tidy/
+*.py
 
 # IDE
 .idea/
