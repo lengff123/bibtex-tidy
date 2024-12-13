@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="http://www.bibtex-tidy.tech/">http://www.bibtex-tidy.tech/</a>
+</p>
+
 # BibTeX Tidy
 
 A tool for cleaning and formatting BibTeX files.
@@ -9,4 +13,3 @@ A tool for cleaning and formatting BibTeX files.
 - Remove specified fields
 - And more...
 
-## Installation

@@ -2,20 +2,12 @@
 <html>
 <head>
     <title>BibTeX Processor</title>
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
-    <script type="module">
-        import i18n, { detectLanguage } from './static/js/i18n.js';
-        window.i18n = i18n;
-        
-        // 页面加载时自动设置语言
-        document.addEventListener('DOMContentLoaded', () => {
-            const detectedLang = detectLanguage();
-            document.querySelector('.language-selector').value = detectedLang;
-            changeLanguage(detectedLang);
-        });
-    </script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <link href="http://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.36.1/min/vs/loader.min.js"></script>
+
     <style>
         :root {
             --vscode-bg: #1e1e1e;
@@ -528,9 +520,155 @@
     </div>
 
     <script>
+        const i18n = {
+            en: {
+                // Options Panel
+                options: "Options",
+                header: "Enable header comments with processing information",
+                
+                // Formatting
+                formatting: "Formatting",
+                alignment: "Alignment",
+                alignmentHint: "Alignment value for field values",
+                doubleBraces: "Use double braces for values",
+                useSpaces: "Use spaces instead of tabs for indentation",
+                
+                // Sorting & Duplicates
+                sortingDuplicates: "Sorting & Duplicates",
+                sortEntries: "Sort Entries",
+                sortNone: "None (preserve order)",
+                sortKey: "By citation key",
+                sortYear: "By year",
+                sortAuthor: "By author",
+                duplicateCheck: "Duplicate Check",
+                duplicateNone: "None",
+                duplicateKey: "By key",
+                duplicateDoi: "By DOI",
+                duplicateTitle: "By title",
+                duplicateAll: "All methods",
+                mergeStrategy: "Merge Strategy",
+                mergeCombine: "Combine",
+                mergeOverwrite: "Overwrite",
+                mergeFirst: "Keep first",
+                mergeLast: "Keep last",
+
+                // Field Processing
+                fieldProcessing: "Field Processing",
+                fieldOrder: "Field Order",
+                fieldOrderHint: "Comma-separated list of fields in desired order",
+                omitFields: "Omit Fields",
+                omitFieldsHint: "Fields to omit (comma-separated)",
+                replaceFields: "Replace Fields",
+                replaceFieldsHint: "Format: old1:new1,old2:new2",
+                sortFields: "Enable field sorting",
+
+                // Author Processing
+                authorProcessing: "Author Processing",
+                maxAuthors: "Max Authors",
+                maxAuthorsHint: "Maximum number of authors before truncating",
+
+                // URL Processing
+                urlProcessing: "URL Processing",
+                encodeUrls: "Enable URL encoding",
+                validateUrls: "Check if URLs are accessible",
+
+                // Citation Keys
+                citationKeys: "Citation Keys",
+                autoKeys: "Automatically generate citation keys",
+                keyFormat: "Key Format",
+                keyFormatHint: "Format for citation keys (e.g., \"[auth][year][title:3]\")",
+
+                // UI Elements
+                process: "Process",
+                donate: "Donate to Support BibTeX Tidy ☕",
+                editor: "BibTeX Editor"
+            },
+            zh: {
+                // 选项面板
+                options: "选项",
+                header: "启用包含处理信息的头部注释",
+                
+                // 格式化
+                formatting: "格式化",
+                alignment: "对齐",
+                alignmentHint: "字段值的对齐值",
+                doubleBraces: "使用双括号包围值",
+                useSpaces: "使用空格代替制表符进行缩进",
+                
+                // 排序和重复项
+                sortingDuplicates: "排序与重复项",
+                sortEntries: "条目排序",
+                sortNone: "无（保持原顺序）",
+                sortKey: "按引用键",
+                sortYear: "按年份",
+                sortAuthor: "按作者",
+                duplicateCheck: "重复检查",
+                duplicateNone: "无",
+                duplicateKey: "按键",
+                duplicateDoi: "按 DOI",
+                duplicateTitle: "按标题",
+                duplicateAll: "所有方法",
+                mergeStrategy: "合并策略",
+                mergeCombine: "合并",
+                mergeOverwrite: "覆盖",
+                mergeFirst: "保留首个",
+                mergeLast: "保留最后",
+
+                // 字段处理
+                fieldProcessing: "字段处理",
+                fieldOrder: "字段顺序",
+                fieldOrderHint: "按期望顺序排列的字段（逗号分隔）",
+                omitFields: "忽略字段",
+                omitFieldsHint: "要忽略的字段（逗号分隔）",
+                replaceFields: "替换字段",
+                replaceFieldsHint: "格式：旧1:新1,旧2:新2",
+                sortFields: "启用字段排序",
+
+                // 作者处理
+                authorProcessing: "作者处理",
+                maxAuthors: "最大作者数",
+                maxAuthorsHint: "截断前的最大作者数量",
+
+                // URL处理
+                urlProcessing: "URL处理",
+                encodeUrls: "启用URL编码",
+                validateUrls: "检查URL可访问性",
+
+                // 引用键
+                citationKeys: "引用键",
+                autoKeys: "自动生成引用键",
+                keyFormat: "键格式",
+                keyFormatHint: "引用键格式（例如：\"[auth][year][title:3]\"）",
+
+                // 界面元素
+                process: "处理",
+                donate: "赞助支持 BibTeX Tidy ☕",
+                editor: "BibTeX 编辑器"
+            }
+        };
+
+        // 添加语言检测和自动设置功能
+        function detectLanguage() {
+            // 获取浏览器语言设置
+            const browserLang = navigator.language || navigator.userLanguage;
+            
+            // 首选项：先检查 localStorage 中保存的语言设置
+            const savedLang = localStorage.getItem('preferred-language');
+            if (savedLang && ['en', 'zh'].includes(savedLang)) {
+                return savedLang;
+            }
+            
+            // 如果没有保存的设置，根据浏览器语言判断
+            if (browserLang.startsWith('zh')) {
+                return 'zh';
+            }
+            
+            // 默认使用英文
+            return 'en';
+        }
         let editor;
-        // 配置后端 API 地址
-        const API_BASE_URL = ''//'http://10.134.86.96:5000';  // 使用 HTTP
+        // 修改 API 基础 URL，强制使用 HTTP
+        const API_BASE_URL = 'http://60.205.177.39:5000';  // 或者 'http://www.bibtex-tidy.tech'
             // 示例 BibTeX 条目
         const exampleBibTeX = `
 % Bibliography File
@@ -647,7 +785,8 @@
             const options = Object.fromEntries(formData.entries());
             
             try {
-                const response = await fetch(`${API_BASE_URL}/process`, {
+                const url = 'http://60.205.177.39:5000/process';  // 确保使用 HTTP
+                const response = await fetch(url, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -655,7 +794,11 @@
                     body: JSON.stringify({
                         content: content,
                         options: options
-                    })
+                    }),
+                    // 添加这些选项
+                    cache: 'no-cache',
+                    mode: 'cors',
+                    credentials: 'same-origin'
                 });
                 
                 const data = await response.json();
