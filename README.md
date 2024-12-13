@@ -28,3 +28,17 @@ A tool for cleaning and formatting BibTeX files.
 - Remove specified fields
 - And more...
 
+
+## Support & Sponsorship
+### Support & Donations
+If you find this tool helpful, feel free to scan the QR code below to make a donation:
+
+<p align="center">
+  <img src="assets/wechat-qr.png" alt="WeChat QR Code" width="200"/>
+</p>
+
+### Advertising Partnership
+We are currently seeking advertising partners. If you are interested in advertising with us, please contact us through:
+
+- Email: ffxdds@163.com
+
